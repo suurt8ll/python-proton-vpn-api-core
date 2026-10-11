@@ -1,0 +1,63 @@
+# Fork packaging (suurt8ll).
+#
+# Upstream ships no pyproject.toml (it builds debian/rpm packages in CI,
+# compiling the Rust `proton-vpn-platform` cdylib with plain cargo and
+# dropping `proton/vpn/platform.abi3.so` into the tree). That does not work
+# for uv/pip installs straight from git, so this fork adds a maturin-based
+# build:
+#
+#   * builds only the `python` + `core` features of the Rust crate (the CLI
+#     only needs `proton.vpn.platform.core.ServerStatus`; kill-switch,
+#     protun, local-agent and telemetry features are dead weight and some of
+#     them need private submodules / system libs),
+#   * pulls `proton-vpn-binary-status` from its public GitHub mirror instead
+#     of Proton's private cargo registry (see Cargo.toml),
+#   * packages the pure-Python `proton/*` tree alongside the extension,
+#     excluding the NetworkManager backends (they need pygobject/dbus-fast
+#     and are unused by a headless CLI).
+
+[build-system]
+requires = ["maturin>=1.8,<2"]
+build-backend = "maturin"
+
+[project]
+name = "proton-vpn-api-core"
+dynamic = ["version"]
+description = "Proton AG VPN Core API"
+authors = [{ name = "Proton AG", email = "opensource@proton.me" }]
+license = { text = "GPLv3" }
+requires-python = ">=3.9"
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python",
+    "Topic :: Security",
+    "Programming Language :: Rust",
+]
+# Trimmed vs upstream's setup.py: dbus-fast, pygobject, pycairo and jinja2
+# are only used by proton/vpn/backend/* (NetworkManager machinery), which is
+# not packaged by this fork.
+dependencies = [
+    "proton-core",
+    "distro",
+    "sentry-sdk",
+    "cryptography",
+    "PyNaCl",
+    "fido2",
+    "packaging",
+]
+
+[tool.maturin]
+manifest-path = "Cargo.toml"
+module-name = "proton.vpn.platform"
+features = ["python", "core"]
+no-default-features = true
+include = [{ path = "proton/**/*", format = "wheel" }]
+exclude = [{ path = "proton/vpn/backend/**", format = "wheel" }]
+
+[tool.pytest.ini_options]
+addopts = "--cov=proton/vpn/core/ --cov-report html --cov-report term"
+testpaths = ["tests"]

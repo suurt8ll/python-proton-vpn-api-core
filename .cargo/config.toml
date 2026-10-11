@@ -1,2 +1,6 @@
-[registries.proton]
+# Fork: proton-vpn-binary-status is pulled from GitHub (see Cargo.toml), but
+# its manifest still references the `proton_public` registry for optional
+# dev deps, so cargo needs the registry defined to parse it. The registry is
+# Proton's public sparse index.
+[registries.proton_public]
     index = "sparse+https://rust-registry.proton.me/index/"
